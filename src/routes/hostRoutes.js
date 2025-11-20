@@ -1,28 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const hostService = require('../services/hostService');
+const { authLimiter, readLimiter } = require('../middleware/security');
+const { validateHostRegister, validateHostLogin } = require('../middleware/validation');
 
 /**
  * POST /api/host/register
  * 호스트 회원가입
  */
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, validateHostRegister, async (req, res) => {
   try {
     const { hostId, password } = req.body;
-
-    if (!hostId || !password) {
-      return res.status(400).json({
-        success: false,
-        message: '호스트 ID와 비밀번호를 입력해주세요.'
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: '비밀번호는 6자 이상이어야 합니다.'
-      });
-    }
 
     const result = await hostService.createHost(hostId, password);
     res.status(201).json(result);
@@ -39,16 +27,9 @@ router.post('/register', async (req, res) => {
  * POST /api/host/login
  * 호스트 로그인
  */
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, validateHostLogin, async (req, res) => {
   try {
     const { hostId, password } = req.body;
-
-    if (!hostId || !password) {
-      return res.status(400).json({
-        success: false,
-        message: '호스트 ID와 비밀번호를 입력해주세요.'
-      });
-    }
 
     const result = await hostService.authenticateHost(hostId, password);
 
@@ -70,7 +51,7 @@ router.post('/login', async (req, res) => {
  * GET /api/host/:hostId/meetings
  * 호스트의 모든 모임 조회
  */
-router.get('/:hostId/meetings', async (req, res) => {
+router.get('/:hostId/meetings', readLimiter, async (req, res) => {
   try {
     const { hostId } = req.params;
 

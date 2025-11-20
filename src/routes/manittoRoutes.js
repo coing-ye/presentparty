@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const manittoService = require('../services/manittoService');
+const { matchingLimiter, readLimiter, deleteLimiter } = require('../middleware/security');
 
 /**
  * POST /api/manitto/execute/:meetingId
  * 마니또 매칭 실행
  */
-router.post('/execute/:meetingId', async (req, res) => {
+router.post('/execute/:meetingId', matchingLimiter, async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { hostId } = req.body;
@@ -58,7 +59,7 @@ router.post('/execute/:meetingId', async (req, res) => {
  * GET /api/manitto/mappings/:meetingId
  * 전체 매칭 결과 조회 (호스트용)
  */
-router.get('/mappings/:meetingId', async (req, res) => {
+router.get('/mappings/:meetingId', readLimiter, async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { hostId } = req.query;
@@ -109,7 +110,7 @@ router.get('/mappings/:meetingId', async (req, res) => {
  * DELETE /api/manitto/reset/:meetingId
  * 매칭 초기화
  */
-router.delete('/reset/:meetingId', async (req, res) => {
+router.delete('/reset/:meetingId', deleteLimiter, async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { hostId } = req.body;

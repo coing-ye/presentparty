@@ -7,6 +7,9 @@ require('dotenv').config();
 // Firebase 자동 초기화 (firebase.js에서 처리)
 require('./src/config/firebase');
 
+// 보안 미들웨어
+const { securityHeaders, globalLimiter, speedLimiter } = require('./src/middleware/security');
+
 const hostRoutes = require('./src/routes/hostRoutes');
 const meetingRoutes = require('./src/routes/meetingRoutes');
 const participantRoutes = require('./src/routes/participantRoutes');
@@ -15,10 +18,30 @@ const manittoRoutes = require('./src/routes/manittoRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 미들웨어 설정
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Trust proxy (Render.com, Heroku 등에서 필요)
+app.set('trust proxy', 1);
+
+// 보안 헤더 설정
+app.use(securityHeaders);
+
+// CORS 설정
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? [process.env.BASE_URL, 'https://presentparty.onrender.com']
+    : '*',
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
+
+// Body parser 설정 (크기 제한 추가)
+app.use(bodyParser.json({ limit: '1mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' }));
+
+// 전역 속도 제한
+app.use(speedLimiter);
+
+// 전역 요청 제한 (API 엔드포인트만)
+app.use('/api/', globalLimiter);
 
 // 정적 파일 서빙
 app.use(express.static(path.join(__dirname, 'public')));
