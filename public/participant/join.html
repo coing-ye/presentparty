@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>모임 참가 - Secret Santa Matcher</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎉 모임 참가하기</h1>
+
+    <!-- 메시지 영역 -->
+    <div id="message" class="message hidden"></div>
+
+    <!-- 로딩 상태 -->
+    <div id="loadingState">
+      <div class="loading">모임 정보를 불러오는 중...</div>
+    </div>
+
+    <!-- 모임 정보 -->
+    <div id="meetingInfo" class="hidden">
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+        <h2 id="meetingTitle" style="margin-bottom: 10px;"></h2>
+        <p style="color: #666;">
+          <span id="participantCount">0</span>명이 참가 중입니다
+        </p>
+      </div>
+
+      <!-- 로그인/회원가입 폼 -->
+      <div id="authForm" class="hidden">
+        <!-- 1단계: 이름 입력 -->
+        <div id="nameStep">
+          <div class="form-group">
+            <label for="participantName">참가자 이름</label>
+            <input
+              type="text"
+              id="participantName"
+              placeholder="이름 또는 닉네임을 입력하세요"
+              maxlength="20">
+            <small style="color: #888;">다른 참가자와 중복되지 않는 이름을 입력하세요</small>
+          </div>
+          <button class="btn btn-primary" onclick="checkName()">
+            다음
+          </button>
+        </div>
+
+        <!-- 2단계: 비밀번호 입력 (신규/기존 구분) -->
+        <div id="passwordStep" class="hidden">
+          <p style="margin-bottom: 20px; color: #666;">
+            <strong id="selectedName"></strong>님, 환영합니다!
+          </p>
+
+          <!-- 신규 사용자 -->
+          <div id="signupForm" class="hidden">
+            <p style="color: #2e7d32; margin-bottom: 15px;">
+              ✨ 새로운 참가자입니다. 비밀번호를 설정해주세요.
+            </p>
+            <div class="form-group">
+              <label for="newPassword">비밀번호 설정</label>
+              <input
+                type="password"
+                id="newPassword"
+                placeholder="최소 4자 이상"
+                minlength="4">
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">비밀번호 확인</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                placeholder="비밀번호를 다시 입력하세요"
+                minlength="4">
+            </div>
+            <button class="btn btn-primary" onclick="signup()">
+              참가하기
+            </button>
+          </div>
+
+          <!-- 기존 사용자 -->
+          <div id="loginForm" class="hidden">
+            <p style="color: #1976d2; margin-bottom: 15px;">
+              👋 기존 참가자입니다. 비밀번호를 입력해주세요.
+            </p>
+            <div class="form-group">
+              <label for="password">비밀번호</label>
+              <input
+                type="password"
+                id="password"
+                placeholder="비밀번호를 입력하세요">
+            </div>
+            <button class="btn btn-primary" onclick="login()">
+              로그인
+            </button>
+          </div>
+
+          <button class="btn btn-secondary" onclick="goBackToName()" style="margin-top: 10px;">
+            ← 이름 다시 입력
+          </button>
+        </div>
+      </div>
+
+      <!-- 참가 완료 화면 -->
+      <div id="joinedView" class="hidden">
+        <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; margin-bottom: 25px; text-align: center;">
+          <h3 style="color: #2e7d32; margin-bottom: 10px;">✅ 로그인 완료!</h3>
+          <p style="color: #666;">환영합니다, <strong id="myName"></strong>님!</p>
+        </div>
+
+        <!-- 내 방명록 -->
+        <div style="background: #f3e5f5; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+          <h3 style="color: #6a1b9a; margin-bottom: 15px;">💌 내 방명록</h3>
+          <div id="guestbookView">
+            <p id="currentMessage" style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 15px;"></p>
+            <button class="btn btn-secondary" onclick="showEditGuestbook()">
+              방명록 수정하기
+            </button>
+          </div>
+          <div id="guestbookEdit" class="hidden">
+            <div class="form-group">
+              <textarea
+                id="editMessage"
+                placeholder="호스트에게 남길 메시지를 작성하세요"
+                maxlength="200"
+                style="min-height: 100px;"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="updateGuestbook()">
+              저장하기
+            </button>
+            <button class="btn btn-secondary" onclick="cancelEditGuestbook()" style="margin-top: 10px;">
+              취소
+            </button>
+          </div>
+        </div>
+
+        <!-- 마니또 결과 확인 -->
+        <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+          <h3 style="color: #e65100; margin-bottom: 15px;">🎁 내 마니또</h3>
+          <div id="manittoResult">
+            <p style="color: #888; text-align: center;">호스트가 매칭을 진행하면 여기에 표시됩니다.</p>
+          </div>
+          <button class="btn btn-secondary" onclick="checkManitto()">
+            마니또 확인하기
+          </button>
+        </div>
+
+        <!-- 모임 나가기 -->
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+          <button class="btn btn-danger" onclick="leaveMeeting()" style="background: #dc3545;">
+            🚪 모임 나가기
+          </button>
+          <p style="color: #888; font-size: 12px; margin-top: 10px;">모임에서 나가면 다시 참가할 수 있습니다.</p>
+        </div>
+      </div>
+
+      <!-- 실시간 참가자 목록 -->
+      <div style="margin-top: 30px;">
+        <h3 style="margin-bottom: 15px;">👥 참가자 목록</h3>
+        <ul id="participantList" class="participant-list">
+          <li class="loading">참가자 목록을 불러오는 중...</li>
+        </ul>
+        <button class="btn btn-secondary btn-small" onclick="refreshParticipants()" style="width: 100%;">
+          🔄 새로고침
+        </button>
+      </div>
+    </div>
+
+    <a href="/" class="link">메인으로 돌아가기</a>
+  </div>
+
+  <script>
+    let currentMeetingId = null;
+    let currentMeetingCode = null;
+    let myParticipantName = null;
+    let currentParticipantId = null;
+
+    // 페이지 로드 시 모임 정보 로드
+    document.addEventListener('DOMContentLoaded', () => {
+      const pathParts = window.location.pathname.split('/');
+      currentMeetingCode = pathParts[pathParts.length - 1];
+
+      if (currentMeetingCode) {
+        // 세션 확인
+        checkSession();
+      } else {
+        showMessage('잘못된 접근입니다.');
+      }
+    });
+
+    // 세션 확인 및 자동 로그인
+    async function checkSession() {
+      const sessionKey = `participant_${currentMeetingCode}`;
+      const session = localStorage.getItem(sessionKey);
+
+      if (session) {
+        try {
+          const { meetingId, participantId, participantName } = JSON.parse(session);
+
+          // 세션 정보 복원
+          currentMeetingId = meetingId;
+          currentParticipantId = participantId;
+          myParticipantName = participantName;
+
+          // 모임 정보 로드
+          await loadMeetingInfo();
+
+          // 참가자 화면으로 바로 이동
+          showJoinedView();
+          loadParticipants();
+        } catch (error) {
+          console.error('Session restore error:', error);
+          // 세션이 유효하지 않으면 제거하고 정상 플로우
+          localStorage.removeItem(sessionKey);
+          loadMeetingInfo();
+        }
+      } else {
+        // 세션 없음 - 정상 플로우
+        loadMeetingInfo();
+      }
+    }
+
+    // 메시지 표시
+    function showMessage(text, type = 'error') {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = text;
+      messageEl.className = `message message-${type}`;
+      messageEl.classList.remove('hidden');
+
+      setTimeout(() => {
+        messageEl.classList.add('hidden');
+      }, 3000);
+    }
+
+    // 모임 정보 로드
+    let currentMeeting = null; // 현재 모임 정보 저장
+
+    async function loadMeetingInfo() {
+      try {
+        const response = await fetch(`/api/meetings/code/${currentMeetingCode}`);
+        const data = await response.json();
+
+        if (data.success) {
+          currentMeetingId = data.meeting.id;
+          currentMeeting = data.meeting; // 모임 정보 저장
+          document.getElementById('meetingTitle').textContent = data.meeting.title;
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('meetingInfo').classList.remove('hidden');
+          document.getElementById('authForm').classList.remove('hidden'); // 입력 폼 표시
+
+          // 참가자 목록 로드
+          await loadParticipants();
+        } else {
+          showMessage(data.message);
+          document.getElementById('loadingState').innerHTML = '<p style="color: #c33; text-align: center;">모임을 찾을 수 없습니다.</p>';
+        }
+      } catch (error) {
+        console.error('Load meeting info error:', error);
+        showMessage('모임 정보를 불러오는 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 참가자 목록 로드
+    async function loadParticipants() {
+      try {
+        const response = await fetch(`/api/participants/meeting/${currentMeetingId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const participantListEl = document.getElementById('participantList');
+          const participantCount = data.participants.length;
+          document.getElementById('participantCount').textContent = participantCount;
+
+          if (participantCount > 0) {
+            participantListEl.innerHTML = data.participants.map(p => `
+              <li class="participant-item">
+                <span class="participant-name">${p.isHost ? '👑 ' : ''}${p.name}</span>
+                <span class="participant-time">${new Date(p.joinedAt._seconds * 1000).toLocaleTimeString()}</span>
+              </li>
+            `).join('');
+          } else {
+            participantListEl.innerHTML = '<li style="text-align: center; color: #888;">아직 참가자가 없습니다.</li>';
+          }
+        }
+      } catch (error) {
+        console.error('Load participants error:', error);
+      }
+    }
+
+    // 모집 마감 여부 확인 (신규 참가자에게만 적용)
+    function checkRecruitmentStatus(participantCount) {
+      if (!currentMeeting) return;
+
+      // 이미 로그인한 사용자(참가한 사람)는 마감 여부 체크 안 함
+      if (currentParticipantId) return;
+
+      const isClosed = currentMeeting.recruitmentOpen === false;
+      const isFull = participantCount >= currentMeeting.maxParticipants;
+      const authForm = document.getElementById('authForm');
+
+      if (isClosed || isFull) {
+        // 마감된 경우 (신규 참가자에게만 표시)
+        authForm.classList.remove('hidden'); // hidden 클래스 제거하여 보이게 함
+        const reason = isClosed ? '모집이 마감되었습니다' : '최대 인원이 초과되어 마감되었습니다';
+        authForm.innerHTML = `
+          <div style="padding: 30px; text-align: center; background: #fff3cd; border: 2px solid #ffc107; border-radius: 10px;">
+            <p style="font-size: 24px; margin-bottom: 10px;">❌</p>
+            <p style="font-size: 18px; font-weight: 600; color: #856404; margin-bottom: 10px;">마감된 모임입니다</p>
+            <p style="color: #856404;">${reason}</p>
+            <p style="color: #856404; margin-top: 10px;">참가자 수: ${participantCount}/${currentMeeting.maxParticipants}명</p>
+          </div>
+        `;
+      } else {
+        // 정상 모집 중
+        authForm.classList.remove('hidden');
+      }
+    }
+
+    // 참가자 목록 새로고침
+    function refreshParticipants() {
+      loadParticipants();
+      showMessage('참가자 목록을 새로고침했습니다.', 'success');
+    }
+
+    // 이름 확인
+    async function checkName() {
+      const name = document.getElementById('participantName').value.trim();
+
+      if (!name) {
+        showMessage('이름을 입력해주세요.');
+        return;
+      }
+
+      myParticipantName = name;
+      document.getElementById('selectedName').textContent = name;
+
+      try {
+        // 이름 중복 체크
+        const response = await fetch('/api/participants/check-name', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            meetingId: currentMeetingId,
+            name
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.isDuplicate) {
+          // 기존 사용자 - 로그인 (마감 여부 관계없이 허용)
+          document.getElementById('nameStep').classList.add('hidden');
+          document.getElementById('passwordStep').classList.remove('hidden');
+          document.getElementById('loginForm').classList.remove('hidden');
+          document.getElementById('signupForm').classList.add('hidden');
+        } else {
+          // 신규 사용자 - 마감 여부 확인
+          const isClosed = currentMeeting.recruitmentOpen === false;
+          const currentCount = parseInt(document.getElementById('participantCount').textContent);
+          const isFull = currentCount >= currentMeeting.maxParticipants;
+
+          if (isClosed || isFull) {
+            // 마감된 모임 - 신규 가입 불가
+            const reason = isClosed ? '모집이 마감되었습니다' : '최대 인원이 초과되어 마감되었습니다';
+            showMessage(`${reason}. 신규 참가가 불가능합니다.`);
+            return;
+          }
+
+          // 정상 모집 중 - 회원가입 폼 표시
+          document.getElementById('nameStep').classList.add('hidden');
+          document.getElementById('passwordStep').classList.remove('hidden');
+          document.getElementById('signupForm').classList.remove('hidden');
+          document.getElementById('loginForm').classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Check name error:', error);
+        showMessage('이름 확인 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 이름 입력으로 돌아가기
+    function goBackToName() {
+      document.getElementById('passwordStep').classList.add('hidden');
+      document.getElementById('nameStep').classList.remove('hidden');
+      document.getElementById('participantName').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+      document.getElementById('password').value = '';
+      myParticipantName = null;
+    }
+
+    // 회원가입 (신규 참가자)
+    async function signup() {
+      const password = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!password || password.length < 4) {
+        showMessage('비밀번호는 최소 4자 이상이어야 합니다.');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showMessage('비밀번호가 일치하지 않습니다.');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/participants', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            meetingId: currentMeetingId,
+            name: myParticipantName,
+            password: password,
+            message: ''
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentParticipantId = data.participant.id;
+
+          // 세션 저장
+          const sessionKey = `participant_${currentMeetingCode}`;
+          const sessionData = {
+            meetingId: currentMeetingId,
+            participantId: currentParticipantId,
+            participantName: myParticipantName
+          };
+          localStorage.setItem(sessionKey, JSON.stringify(sessionData));
+
+          showMessage('참가가 완료되었습니다!', 'success');
+          showJoinedView();
+          loadParticipants();
+        } else {
+          showMessage(data.message);
+        }
+      } catch (error) {
+        console.error('Signup error:', error);
+        showMessage('참가 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 로그인 (기존 참가자)
+    async function login() {
+      const password = document.getElementById('password').value;
+
+      if (!password) {
+        showMessage('비밀번호를 입력해주세요.');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/participants/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            meetingId: currentMeetingId,
+            name: myParticipantName,
+            password: password
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentParticipantId = data.participant.id;
+
+          // 세션 저장
+          const sessionKey = `participant_${currentMeetingCode}`;
+          const sessionData = {
+            meetingId: currentMeetingId,
+            participantId: currentParticipantId,
+            participantName: myParticipantName
+          };
+          localStorage.setItem(sessionKey, JSON.stringify(sessionData));
+
+          showMessage('로그인 성공!', 'success');
+          showJoinedView();
+        } else {
+          showMessage(data.message);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        showMessage('로그인 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 참가 완료 화면 표시
+    function showJoinedView() {
+      document.getElementById('authForm').classList.add('hidden');
+      document.getElementById('joinedView').classList.remove('hidden');
+      document.getElementById('myName').textContent = myParticipantName;
+
+      // 방명록 로드
+      loadMyGuestbook();
+    }
+
+    // 내 방명록 로드
+    async function loadMyGuestbook() {
+      try {
+        const response = await fetch(`/api/participants/${currentMeetingId}/name/${myParticipantName}`);
+
+        if (response.status === 404) {
+          handleParticipantDeleted();
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.participant) {
+          const message = data.participant.message || '아직 방명록을 작성하지 않았습니다.';
+          document.getElementById('currentMessage').textContent = message;
+          currentParticipantId = data.participant.id;
+        } else if (!data.success) {
+          handleParticipantDeleted();
+        }
+      } catch (error) {
+        console.error('Load guestbook error:', error);
+      }
+    }
+
+    // 참가자가 삭제된 경우 처리
+    function handleParticipantDeleted() {
+      myParticipantName = null;
+      currentParticipantId = null;
+
+      // 세션 삭제
+      const sessionKey = `participant_${currentMeetingCode}`;
+      localStorage.removeItem(sessionKey);
+
+      // UI 초기화
+      document.getElementById('joinedView').classList.add('hidden');
+      document.getElementById('authForm').classList.remove('hidden');
+      document.getElementById('passwordStep').classList.add('hidden');
+      document.getElementById('nameStep').classList.remove('hidden');
+      document.getElementById('participantName').value = '';
+
+      // 안내 메시지 표시
+      showMessage('모임에서 퇴장되었습니다. 다시 참가하려면 이름을 입력해주세요.', 'error');
+
+      // 참가자 목록 새로고침
+      loadParticipants();
+    }
+
+    // 방명록 수정 모드로 전환
+    function showEditGuestbook() {
+      const currentMessage = document.getElementById('currentMessage').textContent;
+      document.getElementById('editMessage').value = currentMessage === '아직 방명록을 작성하지 않았습니다.' ? '' : currentMessage;
+      document.getElementById('guestbookView').classList.add('hidden');
+      document.getElementById('guestbookEdit').classList.remove('hidden');
+    }
+
+    // 방명록 수정 취소
+    function cancelEditGuestbook() {
+      document.getElementById('guestbookEdit').classList.add('hidden');
+      document.getElementById('guestbookView').classList.remove('hidden');
+    }
+
+    // 방명록 수정 저장
+    async function updateGuestbook() {
+      const newMessage = document.getElementById('editMessage').value.trim();
+
+      try {
+        const response = await fetch(`/api/participants/${currentParticipantId}/message`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            meetingId: currentMeetingId,
+            message: newMessage
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('방명록이 수정되었습니다!', 'success');
+          document.getElementById('currentMessage').textContent = newMessage || '아직 방명록을 작성하지 않았습니다.';
+          cancelEditGuestbook();
+        } else {
+          showMessage(data.message);
+        }
+      } catch (error) {
+        console.error('Update guestbook error:', error);
+        showMessage('방명록 수정 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 모임 나가기
+    async function leaveMeeting() {
+      if (!confirm('정말 모임에서 나가시겠습니까? 나간 후 다시 참가할 수 있습니다.')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/participants/${currentMeetingId}/${currentParticipantId}`, {
+          method: 'DELETE',
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showMessage('모임에서 나갔습니다.', 'success');
+          handleParticipantDeleted();
+        } else {
+          showMessage(data.message);
+        }
+      } catch (error) {
+        console.error('Leave meeting error:', error);
+        showMessage('모임 나가기 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 마니또 확인
+    async function checkManitto() {
+      try {
+        const response = await fetch(`/api/participants/manitto/${currentMeetingId}/${myParticipantName}`);
+        const data = await response.json();
+
+        const manittoResultEl = document.getElementById('manittoResult');
+
+        if (data.success && data.manitto) {
+          manittoResultEl.innerHTML = `
+            <div style="text-align: center; padding: 20px; background: white; border-radius: 8px;">
+              <p style="font-size: 18px; color: #667eea; margin-bottom: 10px;">당신의 마니또는...</p>
+              <h2 style="color: #764ba2; font-size: 32px; margin: 15px 0;">🎁 ${data.manitto.manittoName}</h2>
+              <p style="color: #888; font-size: 14px;">비밀로 해주세요!</p>
+            </div>
+          `;
+        } else {
+          manittoResultEl.innerHTML = `
+            <p style="color: #888; text-align: center;">아직 매칭이 진행되지 않았습니다.</p>
+          `;
+        }
+      } catch (error) {
+        console.error('Check manitto error:', error);
+        showMessage('마니또 조회 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 엔터 키로 진행
+    document.addEventListener('DOMContentLoaded', () => {
+      const nameInput = document.getElementById('participantName');
+      if (nameInput) {
+        nameInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            checkName();
+          }
+        });
+      }
+
+      const newPasswordInput = document.getElementById('newPassword');
+      const confirmPasswordInput = document.getElementById('confirmPassword');
+      if (newPasswordInput && confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            signup();
+          }
+        });
+      }
+
+      const passwordInput = document.getElementById('password');
+      if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            login();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

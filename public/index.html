@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secret Santa Matcher - 마니또 매칭 서비스</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎁 Secret Santa Matcher</h1>
+    <p style="text-align: center; color: #666; margin-bottom: 30px;">
+      쉽고 재미있는 마니또 매칭 서비스
+    </p>
+
+    <div style="margin-bottom: 20px;">
+      <a href="/host">
+        <button class="btn btn-primary">
+          🎯 호스트로 시작하기
+        </button>
+      </a>
+      <p style="text-align: center; margin-top: 10px; color: #888; font-size: 14px;">
+        모임을 만들고 관리할 수 있습니다
+      </p>
+    </div>
+
+    <div>
+      <button class="btn btn-secondary" onclick="showJoinModal()">
+        🎉 참가자로 입장하기
+      </button>
+      <p style="text-align: center; margin-top: 10px; color: #888; font-size: 14px;">
+        초대 코드로 모임에 참가합니다
+      </p>
+    </div>
+
+    <!-- 참가 코드 입력 모달 -->
+    <div id="joinModal" class="hidden mt-20">
+      <div class="form-group">
+        <label for="meetingCode">모임 코드</label>
+        <input
+          type="text"
+          id="meetingCode"
+          placeholder="6자리 코드를 입력하세요"
+          maxlength="6"
+          style="text-transform: uppercase;">
+      </div>
+      <button class="btn btn-primary" onclick="joinMeeting()">
+        참가하기
+      </button>
+      <div id="errorMessage" class="message message-error hidden"></div>
+    </div>
+
+    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+      <h3 style="color: #667eea; text-align: center; margin-bottom: 15px;">
+        주요 기능
+      </h3>
+      <ul style="color: #666; line-height: 1.8;">
+        <li>✨ 간편한 모임 생성 및 참가</li>
+        <li>🔗 QR 코드와 링크로 쉬운 초대</li>
+        <li>🎲 자동 마니또 매칭</li>
+        <li>💌 방명록 기능</li>
+        <li>📊 실시간 참가자 현황</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    function showJoinModal() {
+      const modal = document.getElementById('joinModal');
+      modal.classList.toggle('hidden');
+    }
+
+    function joinMeeting() {
+      const code = document.getElementById('meetingCode').value.trim().toUpperCase();
+      const errorMessage = document.getElementById('errorMessage');
+
+      if (code.length !== 6) {
+        errorMessage.textContent = '6자리 코드를 입력해주세요.';
+        errorMessage.classList.remove('hidden');
+        return;
+      }
+
+      // 모임 코드 확인 후 참가 페이지로 이동
+      fetch(`/api/meetings/code/${code}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            window.location.href = `/join/${code}`;
+          } else {
+            errorMessage.textContent = '존재하지 않는 모임 코드입니다.';
+            errorMessage.classList.remove('hidden');
+          }
+        })
+        .catch(error => {
+          errorMessage.textContent = '오류가 발생했습니다. 다시 시도해주세요.';
+          errorMessage.classList.remove('hidden');
+        });
+    }
+
+    // 엔터 키로 참가하기
+    document.addEventListener('DOMContentLoaded', () => {
+      const codeInput = document.getElementById('meetingCode');
+      if (codeInput) {
+        codeInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            joinMeeting();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

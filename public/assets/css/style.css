@@ -1,0 +1,279 @@
+/* 전역 스타일 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.container {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 40px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.container-wide {
+  max-width: 1200px;
+}
+
+h1 {
+  color: #667eea;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2rem;
+}
+
+h2 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* 폼 스타일 */
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* 버튼 스타일 */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #f0f0f0;
+  color: #333;
+  margin-top: 10px;
+}
+
+.btn-secondary:hover {
+  background: #e0e0e0;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn-small {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn:disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* 메시지 */
+.message {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.message-error {
+  background: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.message-success {
+  background: #efe;
+  color: #3c3;
+  border: 1px solid #cfc;
+}
+
+.message-info {
+  background: #eef;
+  color: #33c;
+  border: 1px solid #ccf;
+}
+
+/* 리스트 */
+.participant-list {
+  list-style: none;
+  margin: 20px 0;
+}
+
+.participant-item {
+  background: #f9f9f9;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.participant-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.participant-time {
+  font-size: 14px;
+  color: #888;
+}
+
+/* 모임 카드 */
+.meeting-card {
+  background: #f9f9f9;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.meeting-card h3 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.meeting-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+.meeting-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* QR 코드 */
+.qr-container {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.qr-container img {
+  max-width: 250px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+/* 링크 */
+.link {
+  color: #667eea;
+  text-decoration: none;
+  text-align: center;
+  display: block;
+  margin-top: 15px;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/* 로딩 */
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #888;
+}
+
+/* 반응형 */
+@media (max-width: 600px) {
+  .container {
+    padding: 25px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .meeting-actions {
+    flex-direction: column;
+  }
+}
+
+/* 유틸리티 */
+.text-center {
+  text-align: center;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+.hidden {
+  display: none;
+}
