@@ -37,11 +37,8 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '1mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' }));
 
-// 전역 속도 제한
-app.use(speedLimiter);
-
 // 전역 요청 제한 (API 엔드포인트만)
-app.use('/api/', globalLimiter);
+app.use('/api/', speedLimiter, globalLimiter);
 
 // 정적 파일 서빙
 app.use(express.static(path.join(__dirname, 'public')));
