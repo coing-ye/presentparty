@@ -278,6 +278,12 @@ textarea {
   display: none;
 }
 
+.word-break-all {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-all;
+}
+
 /* 로딩 스피너 */
 .loading-overlay {
   position: fixed;

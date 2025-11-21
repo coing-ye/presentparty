@@ -126,12 +126,14 @@ async function loadMeetings() {
         <div class="meeting-card" id="meeting_${meeting.id}">
           <h3>${meeting.title}</h3>
           <div class="meeting-info">
-            <span>📅 ${new Date(meeting.createdAt._seconds * 1000).toLocaleDateString()}</span>
-            <span>👥 참가자: ${meeting.participantCount}명</span>
-            <span>🔢 코드: <strong>${meeting.code}</strong></span>
-          </div>
-          <div class="meeting-info">
-            <span>상태: ${getStatusText(meeting.status)}</span>
+            <span>👥 참가자: ${meeting.participantCount} / ${meeting.maxParticipants}명</span>
+            <span>모집 상태: <strong style="color: ${meeting.recruitmentOpen !== false && meeting.participantCount < meeting.maxParticipants ? '#2e7d32' : '#d32f2f'};">
+              ${meeting.recruitmentOpen === false
+                ? '❌ 모집 마감'
+                : meeting.participantCount >= meeting.maxParticipants
+                  ? '❌ 인원 마감'
+                  : '✅ 모집 중'}
+            </strong></span>
           </div>
           <div class="meeting-actions">
             <button class="btn btn-primary btn-small" data-action="toggle-detail" data-meeting-id="${meeting.id}">
@@ -207,8 +209,7 @@ async function toggleMeetingDetail(meetingId) {
         <div style="margin: 20px 0;">
           <h3 style="color: #667eea; margin-bottom: 15px;">📋 ${meeting.title}</h3>
           <p><strong>모임 코드:</strong> ${meeting.code}</p>
-          <p><strong>참가 링크:</strong> <a href="/join/${meeting.code}" target="_blank">${window.location.origin}/join/${meeting.code}</a></p>
-          <p><strong>상태:</strong> ${getStatusText(meeting.status)}</p>
+          <p><strong>참가 링크:</strong> <a href="/join/${meeting.code}" target="_blank" class="link word-break-all">${window.location.origin}/join/${meeting.code}</a></p>
           ${!meeting.hostJoinsAsParticipant ? `<p><strong>호스트:</strong> 👑 ${meeting.hostId}</p>` : ''}
           <p><strong>참가자 수:</strong> ${participants.length}/${meeting.maxParticipants}명</p>
           <p><strong>모집 상태:</strong>
