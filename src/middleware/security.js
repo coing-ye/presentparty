@@ -87,7 +87,7 @@ const readLimiter = rateLimit({
  */
 const speedLimiter = slowDown({
   windowMs: 1 * 60 * 1000, // 1분
-  delayAfter: 10, // 10회 요청 후부터 지연 시작
+  delayAfter: 40, // 40회 요청 후부터 지연 시작
   delayMs: (hits) => hits * 100, // 요청마다 100ms씩 지연 증가
   maxDelayMs: 3000, // 최대 3초 지연
 });

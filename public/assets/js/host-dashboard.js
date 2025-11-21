@@ -203,8 +203,7 @@ async function toggleMeetingDetail(meetingId) {
     // 참가자 목록 조회
     const participantsResponse = await fetch(`/api/meetings/${meetingId}/participants`);
     const participantsData = await participantsResponse.json();
-    hideLoading();
-
+    
     if (meetingData.success && participantsData.success) {
       const meeting = meetingData.meeting;
       const participants = participantsData.participants;
@@ -313,6 +312,7 @@ async function toggleMeetingDetail(meetingId) {
       `;
 
       detailEl.innerHTML = detailHTML;
+      hideLoading();
     }
   } catch (error) {
     console.error('View meeting detail error:', error);
@@ -429,8 +429,9 @@ async function executeMatching(meetingId) {
 
     if (data.success) {
       showMessage(`매칭이 완료되었습니다! (총 ${data.participantCount}명)`, 'success');
-      // 전체 목록 새로고침 대신 해당 모임의 상세 정보만 새로고침
+      // 상세 정보 새로고침 후, 매칭 결과 자동 표시
       await refreshMeetingDetail(meetingId);
+      await viewMappings(meetingId);
     } else {
       showMessage(data.message);
     }
@@ -448,8 +449,6 @@ async function viewMappings(meetingId) {
 
     const response = await fetch(`/api/manitto/mappings/${meetingId}?hostId=${currentHostId}`);
     const data = await response.json();
-    hideLoading();
-
     if (data.success) {
       const mappingsList = document.getElementById(`mappingsList_${meetingId}`);
 
@@ -479,7 +478,9 @@ async function viewMappings(meetingId) {
       }
 
       document.getElementById(`mappingsResult_${meetingId}`).style.display = 'block';
+      hideLoading();
     } else {
+      hideLoading();
       showMessage(data.message);
     }
   } catch (error) {
@@ -517,9 +518,11 @@ async function resetMatching(meetingId) {
     if (data.success) {
       showMessage('매칭이 초기화되었습니다.', 'success');
       hideMappings(meetingId);
-      await loadMeetings();
+      // 전체 목록 새로고침 대신 해당 모임의 상세 정보만 새로고침
       await refreshMeetingDetail(meetingId);
+      hideLoading();
     } else {
+      hideLoading();
       showMessage(data.message);
     }
   } catch (error) {
