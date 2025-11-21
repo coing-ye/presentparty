@@ -47,11 +47,7 @@ async function login() {
       // 로그인 성공 - 호스트 ID를 세션 스토리지에 저장
       sessionStorage.setItem('hostId', data.hostId);
       showMessage('로그인 성공! 대시보드로 이동합니다...', 'success');
-
-      showLoading('대시보드로 이동 중...', '');
-      setTimeout(() => {
-        window.location.href = '/host/dashboard';
-      }, 1000);
+      window.location.href = '/host/dashboard';
     } else {
       showMessage(data.message);
     }

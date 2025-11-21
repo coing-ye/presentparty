@@ -70,25 +70,26 @@ async function getHostMeetings(hostId) {
   try {
     const meetingsSnapshot = await db.collection('meetings')
       .where('hostId', '==', hostId)
-      // .orderBy('createdAt', 'desc')  // 인덱스 생성 전까지 임시 비활성화
+      .orderBy('createdAt', 'desc')
       .get();
 
-    const meetings = [];
-    for (const doc of meetingsSnapshot.docs) {
+    // Promise.all을 사용하여 참가자 수 조회를 병렬로 처리
+    const meetingsPromises = meetingsSnapshot.docs.map(async (doc) => {
       const meetingData = doc.data();
 
-      // 참가자 수 조회 (호스트는 카운팅에서 제외)
       const participantsSnapshot = await db.collection('meetings')
         .doc(doc.id)
         .collection('participants')
         .get();
 
-      meetings.push({
+      return {
         id: doc.id,
         ...meetingData,
         participantCount: participantsSnapshot.size,
-      });
-    }
+      };
+    });
+
+    const meetings = await Promise.all(meetingsPromises);
 
     return meetings;
   } catch (error) {

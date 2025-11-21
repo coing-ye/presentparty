@@ -1,5 +1,6 @@
 const { db } = require('../config/firebase');
 const QRCode = require('qrcode');
+const bcrypt = require('bcrypt');
 
 /**
  * 고유한 6자리 모임 코드 생성
@@ -39,45 +40,47 @@ async function generateUniqueMeetingCode() {
  * 모임 생성
  */
 async function createMeeting(hostId, meetingData) {
+  const batch = db.batch();
+
   try {
     const code = await generateUniqueMeetingCode();
+    const newMeetingRef = db.collection('meetings').doc();
 
     const newMeeting = {
       title: meetingData.title,
       hostId: hostId,
       code: code,
-      status: 'waiting', // waiting, active, completed
+      status: 'waiting',
       createdAt: new Date(),
       maxParticipants: meetingData.maxParticipants || 100,
       hostJoinsAsParticipant: meetingData.hostJoinsAsParticipant || false,
-      recruitmentOpen: true, // 모집 상태 (기본값: 열림)
+      recruitmentOpen: true,
     };
 
-    const docRef = await db.collection('meetings').add(newMeeting);
+    batch.set(newMeetingRef, newMeeting);
 
     // 호스트가 게스트로도 참여하는 경우 참가자로 등록
     if (meetingData.hostJoinsAsParticipant) {
-      const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(meetingData.hostPassword, 10);
+      const hostParticipantRef = newMeetingRef.collection('participants').doc();
 
-      await db.collection('meetings')
-        .doc(docRef.id)
-        .collection('participants')
-        .add({
-          name: meetingData.hostParticipantName,
-          password: hashedPassword,
-          message: meetingData.hostParticipantMessage || '',
-          isHost: true,
-          joinedAt: new Date(),
-        });
+      batch.set(hostParticipantRef, {
+        name: meetingData.hostParticipantName,
+        password: hashedPassword,
+        message: meetingData.hostParticipantMessage || '',
+        isHost: true,
+        joinedAt: new Date(),
+      });
     }
+
+    await batch.commit();
 
     // QR 코드 생성
     const meetingUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/join/${code}`;
     const qrCodeDataUrl = await QRCode.toDataURL(meetingUrl);
 
     return {
-      id: docRef.id,
+      id: newMeetingRef.id,
       ...newMeeting,
       qrCode: qrCodeDataUrl,
       url: meetingUrl,
@@ -139,8 +142,9 @@ async function getMeetingById(meetingId) {
  */
 async function updateMeeting(meetingId, hostId, updateData) {
   try {
-    // 호스트 권한 확인
-    const meeting = await getMeetingById(meetingId);
+    const meetingRef = db.collection('meetings').doc(meetingId);
+    const meeting = (await meetingRef.get()).data();
+    
     if (!meeting) {
       throw new Error('존재하지 않는 모임입니다.');
     }
@@ -148,7 +152,6 @@ async function updateMeeting(meetingId, hostId, updateData) {
       throw new Error('권한이 없습니다.');
     }
 
-    // 수정 가능한 필드만 추출
     const allowedFields = ['title', 'maxParticipants', 'status', 'recruitmentOpen'];
     const filteredData = {};
     allowedFields.forEach(field => {
@@ -157,7 +160,7 @@ async function updateMeeting(meetingId, hostId, updateData) {
       }
     });
 
-    await db.collection('meetings').doc(meetingId).update(filteredData);
+    await meetingRef.update(filteredData);
 
     return { success: true };
   } catch (error) {
@@ -170,9 +173,11 @@ async function updateMeeting(meetingId, hostId, updateData) {
  * 모임 삭제
  */
 async function deleteMeeting(meetingId, hostId) {
+  const batch = db.batch();
+  const meetingRef = db.collection('meetings').doc(meetingId);
+
   try {
-    // 호스트 권한 확인
-    const meeting = await getMeetingById(meetingId);
+    const meeting = (await meetingRef.get()).data();
     if (!meeting) {
       throw new Error('존재하지 않는 모임입니다.');
     }
@@ -180,25 +185,17 @@ async function deleteMeeting(meetingId, hostId) {
       throw new Error('권한이 없습니다.');
     }
 
-    // 참가자 및 매칭 데이터 삭제
-    const participantsSnapshot = await db.collection('meetings')
-      .doc(meetingId)
-      .collection('participants')
-      .get();
+    // 참가자 및 매칭 데이터 삭제 (배치에 추가)
+    const participantsSnapshot = await meetingRef.collection('participants').get();
+    participantsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
-    const deletePromises = participantsSnapshot.docs.map(doc => doc.ref.delete());
-    await Promise.all(deletePromises);
+    const mappingsSnapshot = await meetingRef.collection('manittoMappings').get();
+    mappingsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
-    const mappingsSnapshot = await db.collection('meetings')
-      .doc(meetingId)
-      .collection('manittoMappings')
-      .get();
+    // 모임 삭제 (배치에 추가)
+    batch.delete(meetingRef);
 
-    const deleteMappingsPromises = mappingsSnapshot.docs.map(doc => doc.ref.delete());
-    await Promise.all(deleteMappingsPromises);
-
-    // 모임 삭제
-    await db.collection('meetings').doc(meetingId).delete();
+    await batch.commit();
 
     return { success: true };
   } catch (error) {
@@ -215,12 +212,11 @@ async function getMeetingParticipants(meetingId) {
     const snapshot = await db.collection('meetings')
       .doc(meetingId)
       .collection('participants')
-      .orderBy('joinedAt', 'asc')
+      .orderBy('name', 'asc')
       .get();
 
     const participants = snapshot.docs.map(doc => {
       const data = doc.data();
-      // 비밀번호 필드 제외
       const { password, ...participantData } = data;
       return {
         id: doc.id,
@@ -243,3 +239,4 @@ module.exports = {
   deleteMeeting,
   getMeetingParticipants,
 };
+
