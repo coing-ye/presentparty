@@ -33,13 +33,8 @@ async function executeMatching(meetingId) {
     const participantsSnapshot = await meetingRef.collection('participants').get();
     const participants = participantsSnapshot.docs.map(doc => doc.data().name);
 
-    // 3. 호스트 참여 방식에 따라 참가자 목록 구성
-    let allParticipants;
-    if (meeting.hostJoinsAsParticipant) {
-      allParticipants = participants;
-    } else {
-      allParticipants = [meeting.hostId, ...participants];
-    }
+    // 3. 참가자 목록을 매칭 풀로 사용
+    const allParticipants = participants;
 
     // 4. 최소 인원 확인
     if (allParticipants.length < 3) {

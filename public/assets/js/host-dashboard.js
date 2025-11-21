@@ -127,13 +127,17 @@ async function loadMeetings() {
           <h3>${meeting.title}</h3>
           <div class="meeting-info">
             <span>👥 참가자: ${meeting.participantCount} / ${meeting.maxParticipants}명</span>
-            <span>모집 상태: <strong style="color: ${meeting.recruitmentOpen !== false && meeting.participantCount < meeting.maxParticipants ? '#2e7d32' : '#d32f2f'};">
+            <span>모집: <strong style="color: ${meeting.recruitmentOpen !== false && meeting.participantCount < meeting.maxParticipants ? '#2e7d32' : '#d32f2f'};">
               ${meeting.recruitmentOpen === false
                 ? '❌ 모집 마감'
                 : meeting.participantCount >= meeting.maxParticipants
                   ? '❌ 인원 마감'
                   : '✅ 모집 중'}
             </strong></span>
+          </div>
+          <div class="meeting-info" style="font-size: 13px; color: #888; margin-top: 5px;">
+            <span>📅 생성: ${new Date(meeting.createdAt._seconds * 1000).toLocaleDateString()}</span>
+            <span>🔢 코드: <strong>${meeting.code}</strong></span>
           </div>
           <div class="meeting-actions">
             <button class="btn btn-primary btn-small" data-action="toggle-detail" data-meeting-id="${meeting.id}">
@@ -425,7 +429,7 @@ async function executeMatching(meetingId) {
 
     if (data.success) {
       showMessage(`매칭이 완료되었습니다! (총 ${data.participantCount}명)`, 'success');
-      await loadMeetings();
+      // 전체 목록 새로고침 대신 해당 모임의 상세 정보만 새로고침
       await refreshMeetingDetail(meetingId);
     } else {
       showMessage(data.message);
