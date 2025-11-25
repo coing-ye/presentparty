@@ -1,0 +1,21 @@
+# robots.txt - 검색 엔진 크롤러 설정
+
+# 모든 검색 엔진 허용
+User-agent: *
+Allow: /
+
+# 크롤링 금지할 경로 (있다면)
+Disallow: /assets/
+Disallow: /api/
+
+# 네이버 검색 엔진
+User-agent: Yeti
+Allow: /
+
+# 구글 검색 엔진
+User-agent: Googlebot
+Allow: /
+
+# Sitemap 위치 (여기에 실제 Render 주소를 입력하세요!)
+# 예: https://your-app-name.onrender.com/sitemap.xml
+Sitemap: https://presentparty.onrender.com/sitemap.xml
