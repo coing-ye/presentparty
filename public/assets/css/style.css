@@ -3,6 +3,17 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  /* 터치 디바이스 최적화 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* 부드러운 스크롤 */
+  scroll-behavior: smooth;
+  /* 모바일에서 텍스트 크기 자동 조절 방지 */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 body {
@@ -13,6 +24,12 @@ body {
   justify-content: center;
   align-items: center;
   padding: 20px;
+  /* Safe Area 대응 (노치 디자인) */
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+  /* 터치 스크롤 부드럽게 */
+  -webkit-overflow-scrolling: touch;
 }
 
 .container {
@@ -32,12 +49,25 @@ h1 {
   color: #667eea;
   text-align: center;
   margin-bottom: 30px;
-  font-size: 2rem;
+  /* 반응형 글자 크기: 최소 1.5rem, 선호 5vw, 최대 2rem */
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  /* 긴 텍스트 처리 */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 h2 {
   color: #333;
   margin-bottom: 20px;
+  /* 반응형 글자 크기 */
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+h3 {
+  /* 반응형 글자 크기 */
+  font-size: clamp(1rem, 3.5vw, 1.25rem);
 }
 
 /* 폼 스타일 */
@@ -78,13 +108,23 @@ textarea {
 /* 버튼 스타일 */
 .btn {
   width: 100%;
+  /* 터치 타겟 크기: 최소 44px (iOS 가이드라인) */
+  min-height: 44px;
   padding: 14px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
+  /* 반응형 글자 크기 */
+  font-size: clamp(14px, 3.5vw, 16px);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  /* 터치 디바이스에서 더블탭 확대 방지 */
+  touch-action: manipulation;
+  /* 텍스트 선택 방지 */
+  user-select: none;
+  -webkit-user-select: none;
+  /* 더 나은 터치 반응 */
+  -webkit-touch-callout: none;
 }
 
 .btn-primary {
@@ -92,9 +132,18 @@ textarea {
   color: white;
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+/* 데스크톱에서는 hover */
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+  }
+}
+
+/* 터치 디바이스에서는 active */
+.btn-primary:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
 }
 
 .btn-secondary {
@@ -103,8 +152,14 @@ textarea {
   margin-top: 10px;
 }
 
-.btn-secondary:hover {
-  background: #e0e0e0;
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover {
+    background: #e0e0e0;
+  }
+}
+
+.btn-secondary:active {
+  background: #d5d5d5;
 }
 
 .btn-danger {
@@ -112,14 +167,21 @@ textarea {
   color: white;
 }
 
-.btn-danger:hover {
-  background: #c82333;
+@media (hover: hover) and (pointer: fine) {
+  .btn-danger:hover {
+    background: #c82333;
+  }
+}
+
+.btn-danger:active {
+  background: #bd2130;
 }
 
 .btn-small {
   width: auto;
   padding: 8px 16px;
-  font-size: 14px;
+  font-size: clamp(12px, 3vw, 14px);
+  min-height: 36px;
 }
 
 .btn:disabled {
@@ -233,10 +295,21 @@ textarea {
   text-align: center;
   display: block;
   margin-top: 15px;
+  /* 터치 타겟 크기 확보 */
+  min-height: 44px;
+  padding: 10px;
+  /* 터치 최적화 */
+  touch-action: manipulation;
 }
 
-.link:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .link:hover {
+    text-decoration: underline;
+  }
+}
+
+.link:active {
+  color: #5568d3;
 }
 
 /* 로딩 */
@@ -246,18 +319,128 @@ textarea {
   color: #888;
 }
 
-/* 반응형 */
-@media (max-width: 600px) {
-  .container {
-    padding: 25px;
+/* 반응형 - 모바일 최적화 */
+
+/* 작은 모바일 (320px ~ 480px) */
+@media (max-width: 480px) {
+  body {
+    padding: 10px;
   }
 
-  h1 {
-    font-size: 1.5rem;
+  .container {
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  textarea {
+    padding: 12px 10px;
+  }
+
+  .btn {
+    padding: 12px;
+    /* 버튼 간 여백 확보 */
+    margin-top: 8px;
+  }
+
+  .btn-secondary {
+    margin-top: 12px;
+  }
+
+  /* 참가자 아이템 간격 조정 */
+  .participant-item {
+    padding: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* 모임 카드 간격 조정 */
+  .meeting-card {
+    padding: 15px;
+  }
+
+  .meeting-info {
+    flex-direction: column;
+    gap: 5px;
   }
 
   .meeting-actions {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .meeting-actions .btn {
+    width: 100%;
+  }
+
+  /* QR 코드 크기 조정 */
+  .qr-container img {
+    max-width: 200px;
+  }
+
+  /* 메시지 패딩 조정 */
+  .message {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
+
+/* 중간 모바일 (481px ~ 600px) */
+@media (min-width: 481px) and (max-width: 600px) {
+  .container {
+    padding: 25px;
+  }
+
+  .meeting-actions {
+    flex-direction: column;
+  }
+
+  .meeting-actions .btn {
+    width: 100%;
+  }
+}
+
+/* 태블릿 (601px ~ 768px) */
+@media (min-width: 601px) and (max-width: 768px) {
+  .container {
+    padding: 35px;
+  }
+
+  .meeting-actions {
+    flex-wrap: wrap;
+  }
+
+  .meeting-actions .btn {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
+/* 가로 모드 모바일 최적화 */
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    padding: 10px;
+    align-items: flex-start;
+  }
+
+  .container {
+    margin: 10px 0;
+    padding: 20px;
+  }
+
+  h1 {
+    margin-bottom: 15px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
   }
 }
 
@@ -354,3 +537,166 @@ textarea {
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
+
+/* ===== 추가 모바일 최적화 ===== */
+
+/* 모달 및 오버레이 스크롤 개선 */
+.modal-overlay,
+[id$='Modal'] {
+  /* iOS에서 부드러운 스크롤 */
+  -webkit-overflow-scrolling: touch;
+  /* 스크롤 바운스 제한 */
+  overscroll-behavior: contain;
+}
+
+/* 입력 필드 모바일 최적화 */
+@media (max-width: 768px) {
+  /* iOS에서 입력 시 자동 확대 방지 (이미 16px이지만 명시) */
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* 입력 필드 포커스 시 약간 확대 (사용성 개선) */
+  input:focus,
+  textarea:focus {
+    transform: scale(1.01);
+    transition: transform 0.2s ease;
+  }
+}
+
+/* 긴 텍스트 처리 (URL, 코드 등) */
+.meeting-card code,
+.participant-item code,
+[class*='code'] {
+  word-break: break-all;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* 터치 스크롤 영역 최적화 */
+.participant-list,
+.meeting-list,
+[class*='list'] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 이미지 터치 최적화 */
+img {
+  /* 터치 시 길게 누르기 메뉴 방지 */
+  -webkit-touch-callout: none;
+  /* 드래그 방지 */
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* QR 코드는 저장 가능하도록 */
+.qr-container img {
+  -webkit-touch-callout: default;
+  -webkit-user-drag: auto;
+}
+
+/* 성능 최적화 - 하드웨어 가속 */
+.btn,
+.link,
+.participant-item,
+.meeting-card,
+.modal-overlay {
+  /* GPU 가속 활성화 */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+/* 애니메이션 성능 최적화 */
+@media (prefers-reduced-motion: reduce) {
+  /* 움직임을 선호하지 않는 사용자를 위한 설정 */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 다크 모드 대응 (시스템 설정) */
+@media (prefers-color-scheme: dark) {
+  /* 추후 다크 모드 구현 시 사용 */
+  /* 현재는 주석 처리 */
+}
+
+/* 고해상도 디스플레이 최적화 */
+@media (-webkit-min-device-pixel-ratio: 2),
+       (min-resolution: 192dpi) {
+  /* 레티나 디스플레이에서 선명한 테두리 */
+  .btn,
+  input,
+  textarea {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* 폼 자동완성 스타일 개선 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px white inset;
+  -webkit-text-fill-color: #333;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* 모바일 브라우저 바 대응 */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari */
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* 키보드가 올라올 때 레이아웃 유지 */
+@media (max-width: 768px) {
+  .container {
+    /* 키보드가 올라와도 스크롤 가능하도록 */
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+}
+
+/* 터치 피드백 개선 */
+button:not(:disabled):active,
+.btn:not(:disabled):active,
+[data-action]:active {
+  /* 터치 시 약간 어두워지는 효과 */
+  filter: brightness(0.95);
+}
+
+/* 로딩 상태 시각 피드백 개선 */
+.btn-loading {
+  /* 로딩 중임을 더 명확히 표시 */
+  opacity: 0.8;
+  cursor: wait;
+}
+
+/* 작은 텍스트 가독성 개선 */
+small,
+.small-text {
+  font-size: clamp(12px, 2.5vw, 14px);
+  line-height: 1.5;
+}
+
+/* 링크 간격 개선 (실수 클릭 방지) */
+@media (max-width: 480px) {
+  a,
+  .link {
+    margin: 12px 0;
+  }
+}
+
