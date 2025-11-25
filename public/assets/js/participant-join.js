@@ -6,6 +6,14 @@ let currentMeeting = null;
 
 // --- 유틸리티 함수 ---
 
+// 날짜를 YYYY-MM-DD 형식으로 변환 (시간대 문제 방지)
+function formatDateLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function showMessage(text, type = 'error') {
   const messageEl = document.getElementById('message');
   if (!messageEl) return;
@@ -313,6 +321,7 @@ function showJoinedView() {
   document.getElementById('joinedView').classList.remove('hidden');
   document.getElementById('myName').textContent = myParticipantName;
   loadMyGuestbook();
+  loadDateVotingInfo();
 }
 
 function handleParticipantDeleted() {
@@ -371,6 +380,549 @@ async function checkSession() {
   }
 }
 
+// --- 날짜 투표 기능 ---
+
+async function loadDateVotingInfo() {
+  try {
+    const response = await fetch(`/api/date-voting/${currentMeetingId}`);
+    const data = await response.json();
+
+    const dateVotingSection = document.getElementById('dateVotingSection');
+
+    if (data.enabled) {
+      dateVotingSection.style.display = 'block';
+      // 기존 투표 데이터 로드
+      await loadMyDateVote();
+    } else {
+      dateVotingSection.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Load date voting info error:', error);
+  }
+}
+
+async function loadMyDateVote() {
+  try {
+    const response = await fetch(`/api/date-voting/${currentMeetingId}/vote/${myParticipantName}`);
+    const data = await response.json();
+
+    // 전역 변수로 저장
+    window.myDateVote = data;
+  } catch (error) {
+    console.error('Load my date vote error:', error);
+  }
+}
+
+function showDateVotingModal() {
+  // 먼저 날짜 범위 가져오기
+  fetch(`/api/date-voting/${currentMeetingId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (!data.enabled) {
+        showMessage('날짜 투표가 활성화되지 않았습니다.');
+        return;
+      }
+
+      const startDate = data.startDate.split('T')[0];
+      const endDate = data.endDate.split('T')[0];
+
+      const modal = document.createElement('div');
+      modal.id = 'participantDateVotingModal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        overflow-y: auto;
+        padding: 20px;
+      `;
+
+      modal.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto;">
+          <h2 style="margin-bottom: 20px; color: #1976d2;">📅 모임 날짜 투표</h2>
+          <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+            투표 기간: ${new Date(startDate).toLocaleDateString('ko-KR')} ~ ${new Date(endDate).toLocaleDateString('ko-KR')}
+          </p>
+
+          <div class="form-group">
+            <label style="font-weight: 600; margin-bottom: 10px; display: block;">날짜별 선호도</label>
+            <div id="participantDateCalendar" style="margin-top: 10px;">
+              <p style="color: #888; font-size: 14px; margin-bottom: 15px;">
+                날짜를 클릭하여 선호도를 표시하세요:
+                <br>🟢 <strong style="color: #2e7d32;">선호</strong> /
+                🟡 <strong style="color: #f57c00;">비선호</strong> /
+                🔴 <strong style="color: #d32f2f;">불가능</strong> /
+                ⚪ 일반
+              </p>
+              <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button type="button" class="btn btn-secondary btn-small" data-action="toggle-participant-weekdays" id="toggleParticipantWeekdaysBtn" style="flex: 1; font-size: 13px; padding: 8px;">
+                  📅 평일 모두 불가능
+                </button>
+                <button type="button" class="btn btn-secondary btn-small" data-action="toggle-participant-weekends" id="toggleParticipantWeekendsBtn" style="flex: 1; font-size: 13px; padding: 8px;">
+                  🎉 주말 모두 불가능
+                </button>
+              </div>
+              <div id="participantCalendarGrid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 15px;">
+                <!-- 달력이 여기에 동적으로 생성됩니다 -->
+              </div>
+              <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button type="button" class="btn btn-secondary btn-small" data-action="navigate-participant-month" data-direction="-1">◀ 이전 달</button>
+                <button type="button" class="btn btn-secondary btn-small" data-action="navigate-participant-month" data-direction="1">다음 달 ▶</button>
+                <span id="participantCurrentMonthDisplay" style="flex: 1; text-align: center; line-height: 40px; font-weight: 600;"></span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 25px;">
+            <button class="btn btn-primary" style="flex: 1;" data-action="submit-participant-date-vote">투표 완료</button>
+            <button class="btn btn-secondary" style="flex: 1; margin-top: 0;" data-action="close-participant-date-voting-modal">취소</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+
+      // 전역 변수로 날짜 선호도 저장
+      window.participantDatePreferences = window.myDateVote || {
+        impossible: [],
+        notPreferred: [],
+        preferred: []
+      };
+      window.participantCalendarDate = new Date();
+      window.participantVotingStartDate = startDate;
+      window.participantVotingEndDate = endDate;
+
+      // 달력 렌더링
+      renderParticipantCalendar();
+
+      // 모달 내부 이벤트 리스너 추가
+      modal.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+
+        const action = target.dataset.action;
+        const dateStr = target.dataset.date;
+
+        switch (action) {
+          case 'navigate-participant-month':
+            navigateParticipantMonth(parseInt(target.dataset.direction));
+            break;
+          case 'toggle-participant-date-preference':
+            toggleParticipantDatePreference(dateStr, target);
+            break;
+          case 'toggle-participant-weekdays':
+            toggleParticipantWeekdaysImpossible();
+            break;
+          case 'toggle-participant-weekends':
+            toggleParticipantWeekendsImpossible();
+            break;
+          case 'submit-participant-date-vote':
+            submitParticipantDateVote();
+            break;
+          case 'close-participant-date-voting-modal':
+            closeParticipantDateVotingModal();
+            break;
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Show date voting modal error:', error);
+      showMessage('날짜 투표 모달을 여는 중 오류가 발생했습니다.');
+    });
+}
+
+function renderParticipantCalendar() {
+  const startDate = window.participantVotingStartDate;
+  const endDate = window.participantVotingEndDate;
+
+  const calendarGrid = document.getElementById('participantCalendarGrid');
+  const monthDisplay = document.getElementById('participantCurrentMonthDisplay');
+
+  const year = window.participantCalendarDate.getFullYear();
+  const month = window.participantCalendarDate.getMonth();
+
+  monthDisplay.textContent = `${year}년 ${month + 1}월`;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const firstDayOfWeek = firstDay.getDay();
+
+  calendarGrid.innerHTML = '';
+
+  // 요일 헤더
+  ['일', '월', '화', '수', '목', '금', '토'].forEach(day => {
+    const header = document.createElement('div');
+    header.textContent = day;
+    header.style.cssText = 'text-align: center; font-weight: 600; padding: 5px; font-size: 12px; color: #666;';
+    calendarGrid.appendChild(header);
+  });
+
+  // 빈 칸 추가
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    const empty = document.createElement('div');
+    calendarGrid.appendChild(empty);
+  }
+
+  // 날짜 추가
+  for (let day = 1; day <= lastDay.getDate(); day++) {
+    const date = new Date(year, month, day);
+    // 시간대 문제 방지를 위해 로컬 날짜를 직접 포맷
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const isInRange = dateStr >= startDate && dateStr <= endDate;
+
+    const dayEl = document.createElement('div');
+    dayEl.textContent = day;
+    dayEl.dataset.date = dateStr;
+
+    let bgColor = '#f5f5f5';
+    let textColor = '#999';
+
+    // 이전 선택 표시 (범위 밖이어도 표시)
+    if (window.participantDatePreferences.preferred.includes(dateStr)) {
+      bgColor = '#c8e6c9'; // 녹색 (선호)
+      textColor = isInRange ? '#333' : '#999';
+    } else if (window.participantDatePreferences.notPreferred.includes(dateStr)) {
+      bgColor = '#ffe082'; // 노란색 (비선호)
+      textColor = isInRange ? '#333' : '#999';
+    } else if (window.participantDatePreferences.impossible.includes(dateStr)) {
+      bgColor = '#ffcdd2'; // 빨간색 (불가능)
+      textColor = isInRange ? '#333' : '#999';
+    } else if (isInRange) {
+      bgColor = '#e3f2fd'; // 파란색 (일반)
+      textColor = '#333';
+    }
+
+    // 범위 밖이면 반투명 처리
+    const opacity = isInRange ? '1' : '0.5';
+
+    dayEl.style.cssText = `
+      text-align: center;
+      padding: 10px 5px;
+      background: ${bgColor};
+      color: ${textColor};
+      border-radius: 8px;
+      cursor: ${isInRange ? 'pointer' : 'not-allowed'};
+      font-size: 14px;
+      transition: all 0.2s;
+      opacity: ${opacity};
+    `;
+
+    if (isInRange) {
+      dayEl.dataset.action = 'toggle-participant-date-preference';
+      dayEl.style.transform = 'scale(1)';
+      dayEl.addEventListener('mouseenter', () => dayEl.style.transform = 'scale(1.1)');
+      dayEl.addEventListener('mouseleave', () => dayEl.style.transform = 'scale(1)');
+    }
+
+    calendarGrid.appendChild(dayEl);
+  }
+
+  updateParticipantToggleButtonStates();
+}
+
+function toggleParticipantDatePreference(dateStr, dayElement) {
+  // 기존 팝업이 있으면 제거
+  const existingPopup = document.getElementById('participantDatePreferencePopup');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
+
+  // 팝업 생성
+  const popup = document.createElement('div');
+  popup.id = 'participantDatePreferencePopup';
+  popup.style.cssText = `
+    position: fixed;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 8px;
+    z-index: 10000;
+    display: flex;
+    gap: 8px;
+  `;
+
+  // 현재 선택된 상태 확인
+  const { impossible, notPreferred, preferred } = window.participantDatePreferences;
+  let currentState = 'normal';
+  if (preferred.includes(dateStr)) currentState = 'preferred';
+  else if (notPreferred.includes(dateStr)) currentState = 'notPreferred';
+  else if (impossible.includes(dateStr)) currentState = 'impossible';
+
+  // 옵션 버튼들 생성
+  const options = [
+    { state: 'preferred', icon: '🟢', label: '선호', color: '#c8e6c9' },
+    { state: 'normal', icon: '⚪', label: '가능', color: '#e3f2fd' },
+    { state: 'notPreferred', icon: '🟡', label: '비선호', color: '#ffe082' },
+    { state: 'impossible', icon: '🔴', label: '불가능', color: '#ffcdd2' }
+  ];
+
+  options.forEach(option => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.innerHTML = `
+      <div style="text-align: center;">
+        <div style="font-size: 20px; margin-bottom: 2px;">${option.icon}</div>
+        <div style="font-size: 11px; color: #666;">${option.label}</div>
+      </div>
+    `;
+    button.style.cssText = `
+      border: ${currentState === option.state ? '2px solid #667eea' : '2px solid transparent'};
+      background: ${option.color};
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 60px;
+    `;
+    button.onmouseover = () => {
+      if (currentState !== option.state) {
+        button.style.transform = 'scale(1.05)';
+      }
+    };
+    button.onmouseout = () => {
+      button.style.transform = 'scale(1)';
+    };
+    button.onclick = (e) => {
+      e.stopPropagation();
+      setParticipantDatePreference(dateStr, option.state);
+      popup.remove();
+    };
+    popup.appendChild(button);
+  });
+
+  // 팝업 위치 계산
+  const rect = dayElement.getBoundingClientRect();
+  const popupWidth = 280;
+  const popupHeight = 80;
+
+  let left = rect.left + (rect.width / 2) - (popupWidth / 2);
+  let top = rect.bottom + 8;
+
+  // 화면 밖으로 나가지 않도록 조정
+  if (left + popupWidth > window.innerWidth) {
+    left = window.innerWidth - popupWidth - 10;
+  }
+  if (left < 10) {
+    left = 10;
+  }
+  if (top + popupHeight > window.innerHeight) {
+    top = rect.top - popupHeight - 8;
+  }
+
+  popup.style.left = `${left}px`;
+  popup.style.top = `${top}px`;
+
+  document.body.appendChild(popup);
+
+  // 외부 클릭 시 팝업 닫기
+  setTimeout(() => {
+    const closePopup = (e) => {
+      if (!popup.contains(e.target) && e.target !== dayElement) {
+        popup.remove();
+        document.removeEventListener('click', closePopup);
+      }
+    };
+    document.addEventListener('click', closePopup);
+  }, 100);
+}
+
+function setParticipantDatePreference(dateStr, state) {
+  // 모든 배열에서 해당 날짜 제거
+  window.participantDatePreferences.preferred = window.participantDatePreferences.preferred.filter(d => d !== dateStr);
+  window.participantDatePreferences.notPreferred = window.participantDatePreferences.notPreferred.filter(d => d !== dateStr);
+  window.participantDatePreferences.impossible = window.participantDatePreferences.impossible.filter(d => d !== dateStr);
+
+  // 새로운 상태에 추가 (normal은 추가하지 않음)
+  if (state === 'preferred') {
+    window.participantDatePreferences.preferred.push(dateStr);
+  } else if (state === 'notPreferred') {
+    window.participantDatePreferences.notPreferred.push(dateStr);
+  } else if (state === 'impossible') {
+    window.participantDatePreferences.impossible.push(dateStr);
+  }
+
+  renderParticipantCalendar();
+  updateParticipantToggleButtonStates();
+}
+
+function toggleParticipantWeekdaysImpossible() {
+  const startDate = new Date(window.participantVotingStartDate);
+  const endDate = new Date(window.participantVotingEndDate);
+
+  // 범위 내 모든 평일 찾기
+  const weekdays = [];
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // 월~금
+      weekdays.push(formatDateLocal(d));
+    }
+  }
+
+  if (weekdays.length === 0) return;
+
+  // 모든 평일이 불가능인지 확인
+  const allWeekdaysImpossible = weekdays.every(date =>
+    window.participantDatePreferences.impossible.includes(date)
+  );
+
+  if (allWeekdaysImpossible) {
+    // 모두 일반(가능)으로 변경
+    weekdays.forEach(date => {
+      window.participantDatePreferences.impossible = window.participantDatePreferences.impossible.filter(d => d !== date);
+      window.participantDatePreferences.preferred = window.participantDatePreferences.preferred.filter(d => d !== date);
+      window.participantDatePreferences.notPreferred = window.participantDatePreferences.notPreferred.filter(d => d !== date);
+    });
+  } else {
+    // 모두 불가능으로 변경
+    weekdays.forEach(date => {
+      window.participantDatePreferences.impossible = window.participantDatePreferences.impossible.filter(d => d !== date);
+      window.participantDatePreferences.preferred = window.participantDatePreferences.preferred.filter(d => d !== date);
+      window.participantDatePreferences.notPreferred = window.participantDatePreferences.notPreferred.filter(d => d !== date);
+      window.participantDatePreferences.impossible.push(date);
+    });
+  }
+
+  renderParticipantCalendar();
+  updateParticipantToggleButtonStates();
+}
+
+function toggleParticipantWeekendsImpossible() {
+  const startDate = new Date(window.participantVotingStartDate);
+  const endDate = new Date(window.participantVotingEndDate);
+
+  // 범위 내 모든 주말 찾기
+  const weekends = [];
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) { // 일, 토
+      weekends.push(formatDateLocal(d));
+    }
+  }
+
+  if (weekends.length === 0) return;
+
+  // 모든 주말이 불가능인지 확인
+  const allWeekendsImpossible = weekends.every(date =>
+    window.participantDatePreferences.impossible.includes(date)
+  );
+
+  if (allWeekendsImpossible) {
+    // 모두 일반(가능)으로 변경
+    weekends.forEach(date => {
+      window.participantDatePreferences.impossible = window.participantDatePreferences.impossible.filter(d => d !== date);
+      window.participantDatePreferences.preferred = window.participantDatePreferences.preferred.filter(d => d !== date);
+      window.participantDatePreferences.notPreferred = window.participantDatePreferences.notPreferred.filter(d => d !== date);
+    });
+  } else {
+    // 모두 불가능으로 변경
+    weekends.forEach(date => {
+      window.participantDatePreferences.impossible = window.participantDatePreferences.impossible.filter(d => d !== date);
+      window.participantDatePreferences.preferred = window.participantDatePreferences.preferred.filter(d => d !== date);
+      window.participantDatePreferences.notPreferred = window.participantDatePreferences.notPreferred.filter(d => d !== date);
+      window.participantDatePreferences.impossible.push(date);
+    });
+  }
+
+  renderParticipantCalendar();
+  updateParticipantToggleButtonStates();
+}
+
+function updateParticipantToggleButtonStates() {
+  const weekdaysBtn = document.getElementById('toggleParticipantWeekdaysBtn');
+  const weekendsBtn = document.getElementById('toggleParticipantWeekendsBtn');
+
+  if (!weekdaysBtn || !weekendsBtn) return;
+
+  const startDate = new Date(window.participantVotingStartDate);
+  const endDate = new Date(window.participantVotingEndDate);
+
+  // 평일 확인
+  const weekdays = [];
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      weekdays.push(formatDateLocal(d));
+    }
+  }
+
+  const allWeekdaysImpossible = weekdays.length > 0 && weekdays.every(date =>
+    window.participantDatePreferences.impossible.includes(date)
+  );
+
+  // 주말 확인
+  const weekends = [];
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      weekends.push(formatDateLocal(d));
+    }
+  }
+
+  const allWeekendsImpossible = weekends.length > 0 && weekends.every(date =>
+    window.participantDatePreferences.impossible.includes(date)
+  );
+
+  // 평일 버튼 업데이트
+  weekdaysBtn.textContent = allWeekdaysImpossible ? '📅 평일 모두 가능' : '📅 평일 모두 불가능';
+  weekdaysBtn.style.background = allWeekdaysImpossible ? '#ffcdd2' : '';
+
+  // 주말 버튼 업데이트
+  weekendsBtn.textContent = allWeekendsImpossible ? '🎉 주말 모두 가능' : '🎉 주말 모두 불가능';
+  weekendsBtn.style.background = allWeekendsImpossible ? '#ffcdd2' : '';
+}
+
+function navigateParticipantMonth(direction) {
+  window.participantCalendarDate.setMonth(window.participantCalendarDate.getMonth() + direction);
+  renderParticipantCalendar();
+  updateParticipantToggleButtonStates();
+}
+
+async function submitParticipantDateVote() {
+  try {
+    showLoading('투표 제출 중...', '');
+
+    const response = await fetch(`/api/date-voting/${currentMeetingId}/vote`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        participantName: myParticipantName,
+        ...window.participantDatePreferences
+      }),
+    });
+
+    const data = await response.json();
+    hideLoading();
+
+    if (data.success) {
+      showMessage('투표가 완료되었습니다!', 'success');
+      closeParticipantDateVotingModal();
+      await loadMyDateVote();
+    } else {
+      showMessage(data.message);
+    }
+  } catch (error) {
+    console.error('Submit participant date vote error:', error);
+    hideLoading();
+    showMessage('투표 제출 중 오류가 발생했습니다.');
+  }
+}
+
+function closeParticipantDateVotingModal() {
+  const modal = document.getElementById('participantDateVotingModal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
 // --- DOM 초기화 및 이벤트 리스너 ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -402,6 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'check-manitto': checkManitto(); break;
       case 'leave-meeting': leaveMeeting(); break;
       case 'refresh-participants': loadParticipants(); break;
+      case 'show-date-voting': showDateVotingModal(); break;
     }
   });
 

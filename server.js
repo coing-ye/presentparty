@@ -14,6 +14,7 @@ const hostRoutes = require('./src/routes/hostRoutes');
 const meetingRoutes = require('./src/routes/meetingRoutes');
 const participantRoutes = require('./src/routes/participantRoutes');
 const manittoRoutes = require('./src/routes/manittoRoutes');
+const dateVotingRoutes = require('./src/routes/dateVotingRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,6 +49,7 @@ app.use('/api/host', hostRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/participants', participantRoutes);
 app.use('/api/manitto', manittoRoutes);
+app.use('/api/date-voting', dateVotingRoutes);
 
 // 루트 경로
 app.get('/', (req, res) => {
